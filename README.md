@@ -7,3 +7,5 @@ A digital library where the user can add a book to the table and be able to see 
 It uses HTML, CSS (SaSS) and Javascript (ES6) with the use of objects.
 
 Next step in the project is to learn and implement Firebase to store the data
+
+DEMO: https://algren123.github.io/book-library/
