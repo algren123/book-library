@@ -26,4 +26,9 @@ table {
 h2 {
   font-weight: 600;
 }
+
+i {
+  margin-top: 15px;
+  cursor: pointer;
+}
 /*# sourceMappingURL=style.css.map */

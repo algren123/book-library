@@ -1,3 +1,38 @@
+var firebaseConfig = {
+    apiKey: "AIzaSyBTZMgchyP8VjrS-wyjhMurNCfWNZgAfiw",
+    authDomain: "book-library-33d66.firebaseapp.com",
+    databaseURL: "https://book-library-33d66.firebaseio.com",
+    projectId: "book-library-33d66",
+    storageBucket: "book-library-33d66.appspot.com",
+    messagingSenderId: "652372783017",
+    appId: "1:652372783017:web:cade666dab126ca50f1eb8",
+    measurementId: "G-W6ZJBMJJ0M"
+};
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+
+const db = firebase.firestore();
+const database = firebase.database();
+
+//realtime listener
+db.collection('books').onSnapshot(snapshot => {
+    let changes = snapshot.docChanges();
+    changes.forEach(change => {
+        if(change.type == 'added'){ //update page when you add a new book
+            render(change.doc)
+        } else if (change.type == 'removed'){ //updatee page when you remove a book
+            let tr = tableBody.querySelector('[data-id=' + change.doc.id + ']');
+            tableBody.removeChild(tr);
+        } else if (change.type == 'modified'){ //update page when you change read status
+            let tr = tableBody.querySelector('[data-id=' + change.doc.id + ']');
+            render(change.doc)
+            tableBody.removeChild(tr);
+        }
+    })
+})
+
+
+
 const newBookButton = document.getElementById('new-book')
 const bookButton = document.getElementById('submit-book')
 const bookForm = document.getElementById('book-form');
@@ -6,68 +41,72 @@ const bookAuthorInput = document.getElementById('author');
 const bookYearInput = document.getElementById('year');
 const bookReadInput = document.getElementById('read');
 const tableBody = document.getElementById('table-body');
+const readButton = document.getElementById('toggle-button');
 
-let myLibrary = [];
 
-function Book(title, author, year, read) {
-    //constructor
-    this.title = title;
-    this.author = author;
-    this.year = year;
-    this.read = read;
+//saving data
+
+
+function render(doc){
+
+    let tr = document.createElement('tr');
+    let title = document.createElement('td');
+    let author = document.createElement('td');
+    let year = document.createElement('td');
+    let read = document.createElement('td');
+    let readButton = document.createElement('a');
+    let deleteTd = document.createElement('td');
+    let deleteBook = document.createElement('i')
+    let icon = document.createElement('a')
+
+    tr.setAttribute('data-id', doc.id);
+    readButton.setAttribute('class', 'btn amber toggle-button');
+    readButton.setAttribute('id', 'toggle-button');
+    readButton.textContent = isChecked(doc);
+    title.textContent = doc.data().title;
+    author.textContent = doc.data().author;
+    year.textContent = doc.data().year;
+    deleteBook.setAttribute('class', 'material-icons delete-button');
+    icon.setAttribute('class', 'tooltipped')
+    icon.setAttribute('data-tooltip', 'Delete');
+    deleteBook.textContent = 'delete';
+
+    tr.appendChild(title);
+    tr.appendChild(author);
+    tr.appendChild(year);
+    tr.appendChild(read);
+    read.appendChild(readButton);
+    tr.appendChild(deleteTd);
+    deleteTd.appendChild(icon);
+    icon.appendChild(deleteBook);
+
+    tableBody.appendChild(tr);
+
 }
 
-function render(arr){
-    tableBody.innerHTML = '';
 
-    for (let i=0; i<arr.length; i++){
-        tableBody.innerHTML += `
-            <tr index='${i}'>
-                <td>${arr[i].title}</td>
-                <td>${arr[i].author}</td>
-                <td>${arr[i].year}</td>
-                <td>
-                    <button class='toggle-button btn grey darken-2' id="toggle" index-button='${i}'>${arr[i].read}</button>
-                </td>
-                <td>
-                    <a href ='#' class="delete-button">
-                        <i class = 'material-icons'>delete</i>
-                    </a>
-                </td>
-            </tr>
-        `;
-    }
-}
-
+//add new book
 function addNewBook(){
-    //get input values
-    title = bookTitleInput.value;
-    author = bookAuthorInput.value;
-    year = bookYearInput.value;
-    read = bookReadInput.value;
 
+    db.collection('books').add({
+        title: bookForm.title.value,
+        author: bookForm.author.value,
+        year: bookForm.year.value,
+        read: bookForm.read.checked,
+    });
 
-    //check checkbox status
-    if (bookReadInput.checked){
-        read = 'Read';
-    } else {
-        read = 'Not read';
-    }
-
-    //Add the book to render in myLibrary
-    myLibrary.push(new Book(title, author, year, read));
-    render(myLibrary);
     clearInputs();
 }
 
+//clear inputs
 function clearInputs(){
     bookTitleInput.value = '';
     bookAuthorInput.value = '';
     bookYearInput.value = '';
-    bookReadInput.value = 'unchecked';
+    //add checkbox value
 }
 
-
+//show/hide form button
 function toggleForm(){
     const bookForm = document.getElementById('book-form');
 
@@ -78,25 +117,34 @@ function toggleForm(){
     }
 }
 
+//delete book
 function deleteBook(event){
-    if (event.target.parentElement.classList.contains('delete-button')){
-        event.target.parentElement.parentElement.parentElement.remove();
-        const index = event.target.parentElement.parentElement.parentElement.getAttribute('index');
-        myLibrary.splice(index, 1);
-        render(myLibrary);
-    }
+    let id = event.target.parentElement.parentElement.parentElement.getAttribute('data-id');
+    db.collection('books').doc(id).delete();
 }
 
+//toggle between 'read' and 'not read'
 function toggleStatus(event){
-    if (event.target.classList.contains('toggle-button')){
-        let indexOfButton = event.target.getAttribute('index-button');
-        if (event.target.innerHTML === 'Read'){
-            event.target.innerHTML = 'Not read';
-            myLibrary[indexOfButton].read = 'Not read'
-        } else if (event.target.innerHTML === 'Not read'){
-            event.target.innerHTML = 'Read';
-            myLibrary[indexOfButton].read = 'Read';
-        }
+    let id = event.target.parentElement.parentElement.getAttribute('data-id');
+
+    if (event.target.innerHTML === 'read'){
+        db.collection('books').doc(id).update({
+            read: false
+        })
+    } else if (event.target.innerHTML === 'Not read') {
+        db.collection('books').doc(id).update({
+            read: true
+        })
+    }
+
+}
+
+//check if checkbox is checked or unchecked
+function isChecked(doc){
+    if (doc.data().read === true){
+        return 'read';
+    } else if (doc.data().read === false){
+            return 'Not read';
     }
 }
 
@@ -109,13 +157,17 @@ function eventListeners(){
 
     bookForm.addEventListener('submit', function(event){
         event.preventDefault();
+        database.collection
         addNewBook();
     });
 
     tableBody.addEventListener('click', function(event){
         deleteBook(event);
+    });
+
+    tableBody.addEventListener('click', function(event){
         toggleStatus(event);
-    })
+    });
 }
 
 document.addEventListener('DOMContentLoaded', function(){
